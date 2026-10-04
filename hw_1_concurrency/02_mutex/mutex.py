@@ -39,9 +39,9 @@ class Mutex():
         with self._thread_lock:
             # реализуем 2 пути - быстрый и медленный
             # быстрый
-            if self._state == FREE:
-                self._state = HELD
-                return
+            with self._thread_lock:
+                if self._try_take():
+                    return
             
             # медленный
             # если уже был кем то знаят, то теперь состояние будет оспариваемым (т.к. 2 
