@@ -54,28 +54,34 @@ class Mutex():
 
         
     def try_lock(self):
-        with self._thread_lock:
-            if self._state == FREE:
-                self._state = HELD
-                return True
-            return False
+        for i in range(10):
+            if self._thread_lock(blocking=False):
+                if self._state == FREE:
+                    self._state = HELD
+                    return True
+                return False
+        
 
     def unlock(self):
+        # UPD. Т.е. здесь отдельно рассмотрел каждое состояние (CONTENDED если не HELD и не FREE)
+        # if с HELD должен будет ускорить все, т.к. нет дорогого wake
+        # но CONTENDED здесь тоже не используется по факту (могу явно прописать с ним if вместо HELD 
+        # но суть же от этого не меняется?)
         with self._thread_lock:
             if self._state == FREE:
                 raise RuntimeError()
-
-            if self.queue:
-                # вытаскиваем ивент от первого в очереди потока
-                event = self.queue.popleft()
-                # меняем состояние в зависимости от кол-ва ожидающих потоков
-                # важно это сделать после popleft, т.к. мы вытащили из очереди задачу и,
-                # возможно, она была последней (и тогда ставим held т.к. больше никто не
-                # претендует на исполнение)
-                self._state = CONTENDED if self.queue else HELD
-                # тут у нашего объекта класса Event снимаем лок и тот, кто захолдился в .lock()
-                # в конце поедет дальше
-                event.wake()
-            else:
-                self._state= FREE
+            if self._state == HELD:
+                self._state == FREE
+                return
+        # UPD. Тут как раз 
+            # вытаскиваем ивент от первого в очереди потока
+            event = self.queue.popleft()
+            # меняем состояние в зависимости от кол-ва ожидающих потоков
+            # важно это сделать после popleft, т.к. мы вытащили из очереди задачу и,
+            # возможно, она была последней (и тогда ставим held т.к. больше никто не
+            # претендует на исполнение)
+            self._state = CONTENDED if self.queue else HELD
+            # тут у нашего объекта класса Event снимаем лок и тот, кто захолдился в .lock()
+            # в конце поедет дальше
+            event.wake()
 
