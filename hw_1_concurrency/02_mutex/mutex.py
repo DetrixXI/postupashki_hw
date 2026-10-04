@@ -1,9 +1,10 @@
 import threading
 from collections import deque
+import time
 
 FREE, HELD, CONTENDED = 0, 1, 2
 
-class Event():
+class Custom_Event():
     # класс нужен для blocking-wait работы потоков 
     # (достигается а счет создания threading.Lock() каждый раз)
     def __init__(self):
@@ -28,6 +29,12 @@ class Mutex():
         self._thread_lock = threading.Lock()
         self._state = FREE
 
+    def _try_take(self):
+        if self._state == FREE:
+            self._state = HELD
+            return True
+        return False
+
     def lock(self):
         with self._thread_lock:
             # реализуем 2 пути - быстрый и медленный
@@ -39,41 +46,48 @@ class Mutex():
             # медленный
             # если уже был кем то знаят, то теперь состояние будет оспариваемым (т.к. 2 
             # процесса на него уже претендуют)
-            if self._state == HELD:
+            for _ in range(10):
+                time.sleep(0)
+                with self._thread_lock:
+                    if self._try_take():
+                        return
+
+           
+            event = Custom_Event()
+            with self._thread_lock:
+                if self._try_take():
+                    return
+                self.queue.append(event)
                 self._state = CONTENDED
 
-            # в любом случае нужно добавить ивент в очередь
-            event = Event()
-            self.queue.append(event)
-
-        # дальше поток спит (специально после полной
-        # отработки _тред_лок через контекстный менеджер, чтобы не блокировать никого)
-        # .sleep() спит, пока этот ивент кто то не релизнет с помощью 
-        # wake, вытащив этот ивент из очереди
-        event.sleep()
+            while True:
+                event.sleep()
+                with self._thread_lock():
+                    if self._try_take():
+                        return
+                self.queue.append(event)
+                self._state = CONTENDED
 
         
     def try_lock(self):
-        for i in range(10):
-            if self._thread_lock(blocking=False):
-                if self._state == FREE:
-                    self._state = HELD
-                    return True
-                return False
+        if not self._thread_lock.acquire(blocking=False):
+            return False
+        try:
+            if self._state == FREE:
+                self._state = HELD
+                return True
+            return False
+        finally:
+            self._thread_lock.release()
         
 
     def unlock(self):
-        # UPD. Т.е. здесь отдельно рассмотрел каждое состояние (CONTENDED если не HELD и не FREE)
-        # if с HELD должен будет ускорить все, т.к. нет дорогого wake
-        # но CONTENDED здесь тоже не используется по факту (могу явно прописать с ним if вместо HELD 
-        # но суть же от этого не меняется?)
         with self._thread_lock:
             if self._state == FREE:
                 raise RuntimeError()
             if self._state == HELD:
                 self._state == FREE
                 return
-        # UPD. Тут как раз 
             # вытаскиваем ивент от первого в очереди потока
             event = self.queue.popleft()
             # меняем состояние в зависимости от кол-ва ожидающих потоков
