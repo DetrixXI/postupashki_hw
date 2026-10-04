@@ -18,7 +18,7 @@ class Custom_Event():
 
     def wake(self):
         self.event_lock.release()
-
+    
 
 
 class Mutex():
@@ -37,36 +37,29 @@ class Mutex():
 
     def lock(self):
         with self._thread_lock:
-            # реализуем 2 пути - быстрый и медленный
-            # быстрый
+            if self._try_take():
+                return
+        
+        for _ in range(10):
+            time.sleep(0)
             with self._thread_lock:
                 if self._try_take():
                     return
-            
-            # медленный
-            # если уже был кем то знаят, то теперь состояние будет оспариваемым (т.к. 2 
-            # процесса на него уже претендуют)
-            for _ in range(10):
-                time.sleep(0)
-                with self._thread_lock:
-                    if self._try_take():
-                        return
 
-           
-            event = Custom_Event()
-            with self._thread_lock:
+        event = Custom_Event()
+        with self._thread_lock:
+            if self._try_take():
+                return
+            self.queue.append(event)
+            self._state = CONTENDED
+
+        while True:
+            event.sleep()
+            with self._thread_lock():
                 if self._try_take():
                     return
-                self.queue.append(event)
-                self._state = CONTENDED
-
-            while True:
-                event.sleep()
-                with self._thread_lock():
-                    if self._try_take():
-                        return
-                self.queue.append(event)
-                self._state = CONTENDED
+            self.queue.append(event)
+            self._state = CONTENDED
 
         
     def try_lock(self):
