@@ -1,5 +1,7 @@
 import sys
 
+# 123
+
 def output(data: dict):
     for key, value in data.items():
         if value == None:

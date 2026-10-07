@@ -2,6 +2,7 @@
 import os
 import pathlib
 import subprocess
+import sys
 
 TASK_DIR = pathlib.Path(os.environ.get("HW_TASK_DIR")
                         or pathlib.Path(__file__).resolve().parent.parent)
@@ -24,6 +25,14 @@ def _build():
 
 def run(args=(), stdin="", timeout=30):
     """Запускает run.sh и возвращает (код возврата, stdout, stderr)."""
+    if os.name == 'nt':
+            script = TASK_DIR / "03_dns.py"
+            _build()
+            env = dict(os.environ, PYTHONUNBUFFERED="1")
+            r = subprocess.run([sys.executable, str(script), *map(str, args)],
+                               cwd=TASK_DIR, input=stdin, capture_output=True,
+                               text=True, timeout=timeout, env=env)
+            return r.returncode, r.stdout, r.stderr
     script = TASK_DIR / "run.sh"
     if not script.exists():
         raise AssertionError(
