@@ -4,6 +4,8 @@ from typing import Callable
 
 class Once:
     def __init__(self):
+        # за состояние "в процессе" отвечает лок 
+        # (для получения снаружи нет интерфейса, но это вроде и не нужно, исходя из функционала Once)
         self._lock = threading.Lock()
         self._done = False
         self._res = None
@@ -17,11 +19,9 @@ class Once:
                 return self._res
             try:
                 self._res = f()
-            except Exception:
-                raise
             finally:
                 self._done = True
+            return self._res
 
     def done(self) -> bool:
-        with self._lock:
-            return self._done
+        return self._done

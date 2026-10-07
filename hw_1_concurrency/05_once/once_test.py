@@ -11,7 +11,7 @@ def finished(f: Callable[[], None]) -> threading.Event:
     def wrapper():
         f()
         event.set()
-    threading.Thread(target=wrapper).start()
+    threading.Thread(target=wrapper, daemon=True).start()
     return event
 
 

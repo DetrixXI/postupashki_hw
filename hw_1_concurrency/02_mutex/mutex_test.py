@@ -151,14 +151,19 @@ class TestMutex(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             m.unlock()
 
+    # переписал тест, т.к. deadline задавался еше даже до старта ВСЕХ потоков. Время 
+    # шло, создание и работа потоков были в процессе, а потоки 6 и 7 мб и не созданы еще даже были....
     def test_handoff_under_load(self):
         m = Mutex()
-        deadline = time.time() + 0.3
         results = [None] * 8
+        go = threading.Event()
+        deadline_box = [None]
 
         def worker(idx):
+            go.wait()
+            deadline = deadline_box[0]
             passes = 0
-            while time.time() < deadline:
+            while time.monotonic() < deadline:
                 m.lock()
                 passes += 1
                 m.unlock()
@@ -168,18 +173,14 @@ class TestMutex(unittest.TestCase):
         for t in threads:
             t.start()
 
+        deadline_box[0] = time.monotonic() + 0.3
+        go.set()
+
         for i, t in enumerate(threads):
             t.join(timeout=5)
             if t.is_alive():
                 self.fail(f"поток {i} завис")
             self.assertGreater(results[i], 0, f"поток {i} не получил мьютекс ни разу")
-
-
-        # Если какой-то поток завис (join по таймауту не завершил работу)
-        for i, t in enumerate(threads):
-            if t.is_alive():
-                self.fail(f"поток {i} завис")
-            self.assertGreater(results[i], 0, "горутина не получила мьютекс ни разу")
 
 
 # ── Бенчмарки ──────────────────────────────────────────────

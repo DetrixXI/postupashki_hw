@@ -19,12 +19,13 @@ class Event():
 
 
 class Semaphore:
-    def __init__(self, n: int = 5):
+    def __init__(self, n: int):
         if n < 0:
-            raise ValueError("кол-во мест натуральное число")
+            raise ValueError("кол-во мест не должно быть меньше 0")
         self._permits = n
         self._lock = threading.Lock()
         self._queue = deque()
+        self._max_permits = n
 
     def acquire(self):
         # попробовать занять место. Если не вышло -
@@ -70,6 +71,8 @@ class Semaphore:
                 self._queue.popleft().wake()
             # и если никто не ждет (т.е. работали только мы)
             else:
+                if self._permits == self._max_permits + 1:
+                    raise ValueError('Превышение числа изначальных потоков')
                 self._permits += 1
 
 

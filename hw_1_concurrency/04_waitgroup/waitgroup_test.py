@@ -1,7 +1,7 @@
 import threading
 import time
 import unittest
-from waitgroup import waitgroup as WaitGroup
+from waitgroup import Waitgroup as WaitGroup
 
 
 import threading

@@ -2,7 +2,7 @@ import threading
 import time
 
 
-class helper():
+class Helper():
     # в моей рализации spin-lock и TTAS отличается только lock, потому
     # в helper вынес try_lock и unlock
     def __init__(self):
@@ -15,7 +15,7 @@ class helper():
  
     def try_lock(self):
         # пробуем обратиться к self.__lock, если получится (т.е. тут нет цикла, как выше, спрашиваем 1 раз)
-        if self._thread_lock.acquire(blocking=False):
+        if self._thread_lock.acquire(blocking=True):
             try:
                 if self._lock == True:
                     return False
@@ -41,7 +41,7 @@ class helper():
 
 
 
-class Spinlock(helper):
+class Spinlock(Helper):
     # умышленно не использую контекстные менеджеры
     def lock(self):
         while True:
@@ -60,15 +60,15 @@ class Spinlock(helper):
                 finally:
                     self._thread_lock.release()
             # чтобы не крутился слишком быстро, иначе лишняя нагрузка на проц
-            time.sleep(0.01)
+            time.sleep(0)
 
-class TTAS(helper):
+class TTAS(Helper):
     def lock(self):
         while True:
             # т.е. тут "дешево" просто читаем self.__lock, если 
             # он тру - все хорошо, продолжаем крутиться
             while self._lock:
-                time.sleep(0.01)
+                time.sleep(0)
                 pass
             # сюда попадаем только если self.__lock стал false, т.е. освободился
             # пробуем его захватить, если не вышло - опять возвращаемся в начало
