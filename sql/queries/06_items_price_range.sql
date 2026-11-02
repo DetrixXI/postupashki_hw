@@ -1,0 +1,12 @@
+-- 06. Предметы от 2000 до 3000 золота, кроме свитков рецептов.
+-- cost от 2000 до 3000 включительно, строки с is_recipe = true исключаются.
+--
+-- Колонки: name, cost
+-- Порядок: cost по убыванию, при равенстве name по возрастанию
+-- Строк:   29
+
+
+select name, cost from items
+where cost BETWEEN 2000 and 3000 and is_recipe <> TRUE
+order by cost desc, name ASC
+limit 29
